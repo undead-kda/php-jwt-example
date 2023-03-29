@@ -8,6 +8,4 @@ require_once CONF . 'routes.php';
 
 try {
   Router::start();
-} catch (Throwable $e) {
-
-}
+} catch (Throwable $e) {}

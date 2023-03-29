@@ -1,6 +1,6 @@
 <?php
 
-namespace app\models;
+namespace app\classes;
 
 class DB {
 
@@ -49,7 +49,7 @@ class DB {
   }
 
   public function getData(string $data) {
-
+    
     $query = $this->pdo->query($data);
     $result = $query->fetchAll();
 

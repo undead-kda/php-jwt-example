@@ -2,18 +2,19 @@
 
 namespace app\controllers;
 
-use app\models\DB;
+use app\classes\DB;
 
 class AuthController extends AbstractController {
 
-  private $sql = 'SELECT * FROM Users';
+  public function __construct() {
+    header('Content-Type: application/json; charset=utf-8');
+  }
 
   public function show() {
     $sql = 'SELECT * FROM Users';
     $db = DB::getInstance();
     $result = $db->getData($sql);
 
-    //return json_encode($db->query($sql));
     return $result;
   }
 }
