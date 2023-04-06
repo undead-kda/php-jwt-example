@@ -6,4 +6,7 @@ use Pecee\{
 
 Router::setDefaultNamespace('app\controllers');
 Router::get('/', 'HomeController@run');
-Router::get('/info', 'AuthController@show');
+Router::group(['prefix' => '/auth'], function() {
+  Router::get('/info', 'AuthController@show');
+  Router::post('/login', 'AuthController@authorization');
+});

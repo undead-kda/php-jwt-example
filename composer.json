@@ -2,7 +2,8 @@
   "require": {
     "pecee/simple-router": "^5.1",
     "lcobucci/jwt": "^5.0",
-    "ext-json": "*"
+    "ext-json": "*",
+    "monolog/monolog": "^3.3"
   },
   "autoload": {
     "psr-4": {

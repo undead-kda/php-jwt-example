@@ -2,7 +2,10 @@
 
 namespace app\classes;
 
+use app\classes\Registry;
 class DB {
+
+  use SingletonTrait;
 
   private $host;
   private $dbname;
@@ -15,45 +18,39 @@ class DB {
     \PDO::ATTR_EMULATE_PREPARES   => false,
   ];
   private $pdo;
-  protected static $instance = null;
 
-  static public function getInstance() {
-    if (is_null(self::$instance)) {
-      self::$instance = new self();
-    }
-
-    return self::$instance;
-  }
-  
   private function __construct() {
-    $dbsettings = require __DIR__ . '/../config/dbconfig.php';
-    $this->host = $dbsettings['host'];
-    $this->dbname = $dbsettings['dbname'];
-    $this->charset = $dbsettings['charset'];
-    $this->user = $dbsettings['user'];
-    $this->password = $dbsettings['password'];
+    $dbsettings = Registry::getInstance('DB');
+    $this->host = $dbsettings->get('host');
+    $this->dbname = $dbsettings->get('dbname');
+    $this->charset = $dbsettings->get('charset');
+    $this->user = $dbsettings->get('user');
+    $this->password = $dbsettings->get('password');
 
     $dsn = "mysql:host=$this->host;dbname=$this->dbname;charset=$this->charset";
 
     try {
       $this->pdo = new \PDO($dsn, $this->user, $this->password, $this->opt);
-    } catch (PDOException $e) {
+    } catch (\PDOException $e) {
       die('Connection error: ' . $e->getMessage());
     }
   }
-
-  private function __clone() {}
-
-  public function __wakeup() {
-    throw new Exception("Cannot unserialize singleton");
-  }
-
+  
+ 
   public function getData(string $data) {
-    
     $query = $this->pdo->query($data);
     $result = $query->fetchAll();
 
     return json_encode($result, JSON_UNESCAPED_UNICODE);
+  }
+
+  public function findUser(string $user): array {
+    $sql = "SELECT * FROM Users WHERE email = ? LIMIT 1";
+    $query = $this->pdo->prepare($sql);
+    $query->execute(array($user));
+    $result = $query->fetchAll();
+
+    return $result;
   }
   
 }
