@@ -36,21 +36,21 @@ class DB {
     }
   }
   
- 
-  public function getData(string $data) {
-    $query = $this->pdo->query($data);
-    $result = $query->fetchAll();
+  public function get(string $sql, array $values): array {
+    if (!($sql || $values)) return [];
 
-    return json_encode($result, JSON_UNESCAPED_UNICODE);
-  }
-
-  public function findUser(string $user): array {
-    $sql = "SELECT * FROM Users WHERE email = ? LIMIT 1";
     $query = $this->pdo->prepare($sql);
-    $query->execute(array($user));
+    $query->execute($values);
     $result = $query->fetchAll();
 
     return $result;
   }
-  
+
+  public function update(string $sql, array $values): void {
+    if (!($sql || $values)) exit();
+
+    $query = $this->pdo->prepare($sql);
+    $query->execute($values);
+  }
+
 }

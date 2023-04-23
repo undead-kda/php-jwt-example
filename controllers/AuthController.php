@@ -2,121 +2,93 @@
 
 namespace app\controllers;
 
-use app\classes\DB;
+use app\models\User;
+use app\models\Auth;
+use app\models\Token;
 use app\classes\Registry;
 use app\models\Request;
-use ArgumentCountError;
-use DateTimeImmutable;
-use Lcobucci\JWT\Configuration;
-use Lcobucci\JWT\Signer\Hmac\Sha256;
-use Lcobucci\JWT\Signer\Key\InMemory;
-
-enum TokenType {
-  case Access;
-  case Refresh;
-}
 
 class AuthController extends AbstractController {
 
-  private $db;
-  private $key;
+  const ACCESS = 1;
+  const REFRESH = 0;
+  private object $auth;
+  private object $user;
 
   public function __construct() {
     parent::__construct();
     header('Content-Type: application/json; charset=utf-8');
-    $this->db = DB::getInstance();
-    $tokenConfig = Registry::getInstance('JWT');
-    $this->key = $tokenConfig->get('key');
-  }
-
-  public function show() {
-    $sql = 'SELECT * FROM Users';
-    $result = $this->db->getData($sql);
-
-    return $result;
+    $this->auth = new Auth();
   }
 
   public function authorization() {
-    $authResult = $this->login();
+    $input = json_decode(file_get_contents("php://input"), true);
     
-    if ($authResult['auth']) {
+    if (!$input) {
       return $this->response->json([
-        'accessToken' => $this->signin($authResult, TokenType::Access),
-        'refreshToken' => $this->signin($authResult, TokenType::Refresh),
-        'result' => 'ok'
+        'status' => 'error'
       ]);
+    }
+
+    $authResult = $this->auth->login($input);
+    
+    if (!$authResult['auth']) {
+      return $this->response->json([
+        'status' => 'error'
+      ]);
+    }
+    
+    if (isset($authResult['auth'])) {
+      return $this->getTokens($authResult);
     } else {
       return $this->response->json([
-        'result' => 'error'
+        'status' => 'error'
+      ]); 
+    }
+  }
+
+  private function getTokens(array $authValues): array {
+    $token = new Token();
+    $accessToken = $token->signin($authValues, self::ACCESS);
+    $refreshToken = $token->signin($authValues, self::REFRESH);
+
+    $this->auth->setTokenHash($refreshToken);
+    
+    return $this->response->json([
+      'accessToken' => $accessToken,
+      'refreshToken' => $refreshToken,
+      'status' => 'ok'
+    ]);
+  }
+
+  private function verifyRefreshToken(string $tokenHash): bool {
+    if (!$tokenHash) return false;
+    if (!$this->user->refresh) return false;
+    
+    $result = ($tokenHash === $this->user->refresh) ? true : false;
+    
+    return $result;
+  }
+
+  public function renewTokens() {
+    $uid = $this->request->uid;
+    $tokenHash = $this->request->tokenHash;
+
+    $authValues = $this->auth->getUserInfo($uid);
+
+    if (!$authValues['auth']) {
+      return $this->response->json([
+        'status' => 'error'
+      ]);
+    }
+  
+    if ($tokenHash === $authValues['refresh']) {
+      return $this->getTokens($authValues);
+    } else {
+      return $this->response->json([
+        'status' => 'error'
       ]);
     }
   }
 
-  public function signin(array $authParams, TokenType $tokenType): string {
-    if (!$authParams) return false;
-
-    $tokenHeader = 'none';
-    $modifyInterval =  '+2 minutes';
-
-    if ($tokenType === TokenType::Access) {
-      $modifyInterval = '+5 minutes';
-      $tokenHeader = 'access';
-    } elseif ($tokenType === TokenType::Refresh) {
-      $modifyInterval = '+1 week';
-      $tokenHeader = 'refresh';
-    }
-
-    $id = $authParams['userId'];
-    $role = $authParams['role'];
-
-    $config = Configuration::forSymmetricSigner(
-      new Sha256(),
-      InMemory::plainText($this->key)
-    );
-    $now   = new DateTimeImmutable();
-   
-    $token = $config->Builder()
-        ->issuedBy('http://restapiexample.local')
-        ->permittedFor('http://restapiexample.local')
-        ->identifiedBy(md5("user_id_{$id}"), true)
-        ->issuedAt($now)
-        ->expiresAt($now->modify($modifyInterval))
-        ->withClaim('uid', $id)
-        ->withClaim('role', $role)
-        ->withHeader('tokenType', $tokenHeader)
-        ->getToken($config->signer(), $config->signingKey());
-
-    return $token->toString();
-  }
-
-  private function login() {
-    $authResult = false;
-
-    $input = json_decode(file_get_contents("php://input"), true);
-    if ($input) {
-      if (array_key_exists('email', $input) && array_key_exists('password', $input)) {
-        $result = $this->db->findUser(trim($input['email']));
-        if ($result) {
-          $user = $result[0];
-          if (md5(trim($input['password'])) === $user['password']) {
-            $authResult = true;
-          }
-        }
-      }
-    }
-
-    if ($authResult) {
-      return [
-        'auth' => true,
-        'userId' => $user['UserID'],
-        'role' => $user['role']
-      ];
-    }
-    
-    return ['auth' => false];
-  }
-
-  private function validate() {
-
-  }
 }
