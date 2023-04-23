@@ -15,7 +15,7 @@ $dbVariables = Registry::getInstance('DB');
 $dbVariables->set('host', '127.0.0.1');
 $dbVariables->set('dbname', 'restapiexample');
 $dbVariables->set('user', 'root');
-$dbVariables->set('password', 'Qwe123');
+$dbVariables->set('password', 'Pass');
 $dbVariables->set('charset', 'utf8');
 
 try {
